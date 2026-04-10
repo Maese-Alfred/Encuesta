@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────
+    // Encuestas
+    // ──────────────────────────────────────────────
+    match /surveys/{surveyId} {
+      // Crear un nuevo documento solo si los datos son válidos y el estado inicial es 'draft'
+      allow create: if isValidSurvey(request.resource.data)
+                    && request.resource.data.status == 'draft'
+                    && !('updatedAt' in request.resource.data
+                         && request.resource.data.updatedAt != request.time);
+
+      // Actualizar solo si el documento aún está en borrador (draft → submitted, nunca al revés)
+      // y los nuevos datos pasan la validación completa.
+      allow update: if resource.data.status == 'draft'
+                    && isValidSurvey(request.resource.data)
+                    && isValidStatusTransition(resource.data.status, request.resource.data.status)
+                    && !('createdAt' in request.resource.data);
+
+      // Lectura, eliminación y cualquier otra operación: bloqueadas desde el cliente
+      allow read, delete: if false;
+    }
+
+    // Bloquear cualquier otra colección por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ──────────────────────────────────────────────
+    // Funciones de validación
+    // ──────────────────────────────────────────────
+
+    // Comprueba campos obligatorios y tipos de los datos de la encuesta
+    function isValidSurvey(data) {
+      return data.keys().hasAll(['status', 'updatedAt'])
+        && data.status in ['draft', 'submitted']
+        && data.autorizacion is bool
+        // Campos de texto: deben ser strings con longitud razonable
+        && data.nombre is string
+        && data.nombre.size() <= 200
+        && data.edad is string
+        && data.edad.size() <= 10
+        && data.lugarResidencia is string
+        && data.lugarResidencia.size() <= 200
+        // Campos de selección: strings acotadas
+        && data.estadoCivil is string
+        && data.estadoCivil.size() <= 60
+        && data.estrato is string
+        && data.estrato.size() <= 10
+        // No se permiten campos extra fuera del esquema conocido para evitar inyección de datos
+        && data.keys().hasOnly([
+             'status', 'createdAt', 'updatedAt',
+             'nombre', 'edad', 'lugarResidencia', 'estadoCivil', 'estrato',
+             'dependientes', 'tipoCasa', 'medioTransporte', 'nivelEducacion',
+             'tieneHijos', 'numHijos', 'otroTransporte',
+             'cargoActual', 'dependenciaArea', 'tipoContrato', 'antiguedad',
+             'horasSemanales', 'trabajaFines', 'nivelSatisfaccionLaboral',
+             'condicionesFisicas', 'herramientasAdecuadas', 'relacionCompaneros',
+             'relacionJefes', 'equilibrioVidaTrabajo', 'comentariosLaboral',
+             'nivelEstres', 'causasEstres', 'saludFisica', 'saludEmocional',
+             'actividadFisica', 'horasSueno', 'apoyoPsicologico', 'comentariosBienestar',
+             'riesgoPsicosocial', 'acoso', 'violencia', 'burnout', 'comentariosPsicosocial',
+             'usaHerramientasDigitales', 'nivelDigitalizacion', 'capacitacionDigital',
+             'dificultadesDigitales', 'comentariosDigital',
+             'climaOrganizacional', 'comunicacionInterna', 'transparencia',
+             'participacion', 'reconocimiento', 'comentariosClima',
+             'nivelMotivacion', 'factoresMotivacion', 'compromisoOrganizacional',
+             'satisfaccionRemuneracion', 'comentariosMotivacion',
+             'seguridadOcupacional', 'programasBienestar', 'atencionIncidentes',
+             'prevencionRiesgos', 'comentariosBienestarLaboral',
+             'estiloLiderazgo', 'apoyoLider', 'feedbackLider',
+             'desarrolloProfesional', 'comentariosLiderazgo',
+             'planCarrera', 'oportunidadesAscenso', 'capacitaciones',
+             'expectativasPermanencia', 'comentariosProyeccion',
+             'resistenciaCambio', 'adaptabilidad', 'comunicacionCambio',
+             'participacionCambio', 'comentariosCambio',
+             'fortalezas', 'aspectosMejorar', 'sugerencias', 'autorizacion'
+           ]);
+    }
+
+    // Solo permite la transición draft → submitted (nunca submitted → draft)
+    function isValidStatusTransition(currentStatus, newStatus) {
+      return (currentStatus == 'draft' && newStatus in ['draft', 'submitted']);
+    }
+  }
+}

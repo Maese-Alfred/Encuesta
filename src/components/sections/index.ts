@@ -1,0 +1,12 @@
+export { PerfilSection } from './PerfilSection';
+export { LaboralSection } from './LaboralSection';
+export { BienestarSection } from './BienestarSection';
+export { PsicosocialSection } from './PsicosocialSection';
+export { DigitalSection } from './DigitalSection';
+export { ClimaSection } from './ClimaSection';
+export { MotivacionSection } from './MotivacionSection';
+export { BienestarLaboralSection } from './BienestarLaboralSection';
+export { LiderazgoSection } from './LiderazgoSection';
+export { ProyeccionSection } from './ProyeccionSection';
+export { CambioSection } from './CambioSection';
+export { AbiertasSection } from './AbiertasSection';
